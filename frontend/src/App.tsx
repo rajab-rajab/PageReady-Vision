@@ -64,6 +64,12 @@ export default function App() {
         : uploaded
       setBatch(refreshed)
       setSelectedId(refreshed.pages.at(-1)?.id ?? null)
+
+      // Run newly uploaded pages through the same audited policy path as the demo.
+      // Without this request, successful uploads stayed in the queued state.
+      const completed = await api.process(refreshed.id)
+      setBatch(completed)
+      setSelectedId(completed.pages.at(-1)?.id ?? null)
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Upload failed') }
     finally { event.target.value = '' }
   }
