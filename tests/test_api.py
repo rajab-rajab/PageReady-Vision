@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import cv2
 from fastapi.testclient import TestClient
 
 from pageready.api import create_app
+from pageready.demo import generate_demo_documents
 from pageready.service import BatchService
 
 
@@ -49,3 +51,15 @@ def test_corrupt_upload_remains_visible_as_an_error_item() -> None:
     uploaded = client.post("/api/batches/upload", files={"file": ("bad-image.txt", b"not an image", "text/plain")})
     assert uploaded.status_code == 201
     assert uploaded.json()["pages"][0]["error"]["code"] == "unsupported_or_corrupt"
+
+
+def test_valid_upload_is_processed_without_a_second_browser_request() -> None:
+    client = TestClient(create_app(BatchService()))
+    ok, encoded = cv2.imencode(".png", generate_demo_documents()[0].image)
+    assert ok
+    uploaded = client.post("/api/batches/upload", files={"file": ("page.png", encoded.tobytes(), "image/png")})
+    assert uploaded.status_code == 201
+    page = uploaded.json()["pages"][0]
+    assert page["status"] == "Approved"
+    assert page["metrics"] is not None
+    assert page["trace"]

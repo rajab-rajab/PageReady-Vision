@@ -36,7 +36,9 @@ def create_app(service: BatchService | None = None) -> FastAPI:
     async def upload_to_batch(file: UploadFile = File(...)) -> dict[str, object]:
         try:
             service.add_upload(file.filename or "unnamed-upload", await file.read())
-            return service.public_batch()
+            # Processing is server-driven so an accepted upload never depends on
+            # a browser-side follow-up request to leave the queued state.
+            return service.public_batch(service.process())
         except ValueError as error:
             raise api_error(error) from error
 
